@@ -2,6 +2,7 @@ package pt.flawless.fscoreboard;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -14,12 +15,16 @@ import pt.flawless.fapi.economy.EconomyApi;
 import pt.flawless.fapi.enums.EMessageTypeEnum;
 import pt.flawless.fapi.events.PlayerAuthEvent.PlayerAuthEvent;
 import pt.flawless.fapi.logs.FConsoleLogger;
+import pt.flawless.fapi.ranks.RankApi;
+import pt.flawless.fapi.ranks.Ranks;
 
 public class FScoreboard extends JavaPlugin implements Listener {
     private static final int MAX_LINES = 15;
 
     private final FConsoleLogger consoleLogger = new FConsoleLogger(this.getName());
     private EconomyApi economy;
+    /** Opcional (fRankup); sem ele {rank} fica vazio. */
+    private RankApi ranks;
     private Sidebar sidebar;
     private List<String> lines;
 
@@ -32,6 +37,7 @@ public class FScoreboard extends JavaPlugin implements Listener {
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
+        if (Bukkit.getPluginManager().getPlugin("fRankup") != null) ranks = Ranks.get();
         saveDefaultConfig();
         lines = getConfig().getStringList("lines");
         if (lines.size() > MAX_LINES) lines = lines.subList(0, MAX_LINES);
@@ -66,14 +72,17 @@ public class FScoreboard extends JavaPlugin implements Listener {
     /** Pede o saldo (assíncrono) e volta à thread principal para enviar os pacotes. */
     private void update(Player player) {
         UUID uuid = player.getUniqueId();
-        economy.getBalance(uuid).whenComplete((cents, error) -> {
-            String saldo = economy.format(error == null ? cents : 0L);
+        CompletableFuture<String> rankLabel = ranks == null ? CompletableFuture.completedFuture("")
+                : ranks.getRankLabel(uuid).exceptionally(e -> "");
+        economy.getBalance(uuid).thenCombine(rankLabel, (cents, rank) -> new Object[]{cents, rank}).whenComplete((both, error) -> {
+            String saldo = economy.format(error == null ? (Long) both[0] : 0L);
+            String rank = error == null ? (String) both[1] : "";
             try {
                 Bukkit.getScheduler().runTask(this, () -> {
                     Player p = Bukkit.getPlayer(uuid);
                     if (p == null || !p.isOnline()) return;
                     sidebar.render(p, lines.stream()
-                            .map(l -> color(l.replace("{saldo}", saldo))).toArray(String[]::new));
+                            .map(l -> color(l.replace("{saldo}", saldo)).replace("{rank}", rank)).toArray(String[]::new));
                 });
             } catch (RuntimeException ex) {
                 // plugin desligado entretanto

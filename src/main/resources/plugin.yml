@@ -3,3 +3,4 @@ main: pt.flawless.fscoreboard.FScoreboard
 version: 1.0
 description: Scoreboard lateral com estatísticas do jogador
 depend: [fAPI, fEconomy]
+softdepend: [fRankup]

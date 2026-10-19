@@ -1,9 +1,10 @@
 # Scoreboard lateral. Cores com &. Título até 32 caracteres, cada linha até 32 (máx. 15 linhas).
-# Placeholders: {saldo} = dinheiro do jogador. Uma linha com um espaço fica em branco.
+# Placeholders: {saldo} = dinheiro do jogador, {rank} = rank do fRankup (já com cores). Uma linha com um espaço fica em branco.
 title: "&2&lJOCAS"
 update-seconds: 5
 lines:
   - " "
   - "&fSaldo: &a{saldo}"
+  - "&fRank: {rank}"
   - " "
   - "&ehttps://rainbowapps.pt/"
