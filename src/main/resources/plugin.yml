@@ -1,5 +1,6 @@
 name: fScoreboard
 main: pt.flawless.fscoreboard.FScoreboard
+api-version: '1.21'
 version: 1.0
 description: Scoreboard lateral com estatísticas do jogador
 depend: [fAPI, fEconomy]
