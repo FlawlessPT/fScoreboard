@@ -17,6 +17,8 @@ import pt.flawless.fapi.events.PlayerAuthEvent.PlayerAuthEvent;
 import pt.flawless.fapi.logs.FConsoleLogger;
 import pt.flawless.fapi.ranks.RankApi;
 import pt.flawless.fapi.ranks.Ranks;
+import pt.flawless.fapi.reload.Reloads;
+import org.bukkit.scheduler.BukkitTask;
 
 public class FScoreboard extends JavaPlugin implements Listener {
     private static final int MAX_LINES = 15;
@@ -27,6 +29,7 @@ public class FScoreboard extends JavaPlugin implements Listener {
     private RankApi ranks;
     private Sidebar sidebar;
     private List<String> lines;
+    private BukkitTask task;
 
     @Override
     public void onEnable() {
@@ -39,16 +42,28 @@ public class FScoreboard extends JavaPlugin implements Listener {
         }
         if (Bukkit.getPluginManager().getPlugin("fRankup") != null) ranks = Ranks.get();
         saveDefaultConfig();
+        applyConfig();
+        getServer().getPluginManager().registerEvents(this, this);
+        Reloads.register(this, () -> {
+            reloadConfig();
+            for (Player p : Bukkit.getOnlinePlayers()) sidebar.hide(p);
+            applyConfig();
+            for (Player p : Bukkit.getOnlinePlayers()) update(p);
+        });
+        for (Player p : Bukkit.getOnlinePlayers()) update(p); // /reload
+        consoleLogger.sendEnablePluginMessage();
+    }
+
+    /** Lê linhas, título e período do config; recria a sidebar e a tarefa periódica. */
+    private void applyConfig() {
         lines = getConfig().getStringList("lines");
         if (lines.size() > MAX_LINES) lines = lines.subList(0, MAX_LINES);
         sidebar = new Sidebar(color(getConfig().getString("title", "")));
-        getServer().getPluginManager().registerEvents(this, this);
+        if (task != null) task.cancel();
         long period = Math.max(1, getConfig().getInt("update-seconds", 5)) * 20L;
-        getServer().getScheduler().runTaskTimer(this, () -> {
+        task = getServer().getScheduler().runTaskTimer(this, () -> {
             for (Player p : Bukkit.getOnlinePlayers()) update(p);
         }, period, period);
-        for (Player p : Bukkit.getOnlinePlayers()) update(p); // /reload
-        consoleLogger.sendEnablePluginMessage();
     }
 
     @Override
